@@ -52,7 +52,11 @@ parser.add_argument(
     default=False,
     help="Show usage and help options",
 )
-parser.add_argument("-t", "--target", dest="target", metavar="", help="Search target")
+parser.add_argument("-d", "--domain", dest="domain", metavar="", help="Domain to search i.e.: example.com")
+parser.add_argument(
+    "-f", "--file", dest="file", metavar="", help="File containing a list of domains to search"
+)
+
 parser.add_argument(
     "-o", "--out", dest="output", metavar="", help="Output file", default=False
 )
@@ -65,15 +69,31 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
-
-domain = args.target
+domains = []
 output = args.output
 
 subdomains = set()
 wildcard_domains = set()
 
+def read_data(stream):
+    """
+    Reads a list of domains from a file and returns them as a list.
 
-def crtsh(domain):
+    Args:
+        filename (str): The name of the file to read the domains from.
+
+    Returns:
+        list: A list of domains.
+    """
+    try:
+        with open(stream, "r") as f:
+            domains = [line.strip() for line in f]
+    except TypeError:
+        domains = [line.strip() for line in stream]
+    return domains
+
+
+def crtsh(domains):
     """
     Finds subdomains of the given domain by using the certificate transparency logs search service provided by crt.sh.
 
@@ -87,20 +107,21 @@ def crtsh(domain):
     """
     try:
         url = "https://crt.sh"
-        query = {"q": domain, "output": "json"}
-        response = requests.get(url, params=query, timeout=20)
+        for domain in domains:
+            query = {"q": domain, "output": "json"}
+            response = requests.get(url, params=query, timeout=20)
 
-        if response.ok:
-            data = response.content.decode("UTF-8")
-            jsondata = json.loads(data)
-            for item in range(len(jsondata)):
-                domain = jsondata[item]["name_value"]  # getting domains
-                for subdomain in domain.split("\n"):
-                    if subdomain.find("*"):
-                        subdomains.add(subdomain)
-                    else:
-                        if subdomain not in wildcard_domains:
-                            wildcard_domains.add(subdomain)
+            if response.ok:
+                data = response.content.decode("UTF-8")
+                jsondata = json.loads(data)
+                for item in range(len(jsondata)):
+                    domain = jsondata[item]["name_value"]  # getting domains
+                    for subdomain in domain.split("\n"):
+                        if subdomain.find("*"):
+                            subdomains.add(subdomain)
+                        else:
+                            if subdomain not in wildcard_domains:
+                                wildcard_domains.add(subdomain)
     except Exception as e:
         print(e)
 
@@ -135,23 +156,30 @@ def save(data, output):
 if __name__ == "__main__":
     try:
         # Set up formatting for bannner and interactive shell
-        print(Fore.GREEN + banner[0])
-        print(Fore.LIGHTMAGENTA_EX + banner[1] + Style.RESET_ALL)
+        if not args.plain:
+            print(Fore.GREEN + banner[0])
+            print(Fore.LIGHTMAGENTA_EX + banner[1] + Style.RESET_ALL)
          # Check if the --help flag was passed
         if args.help:
             parser.print_help()
             sys.exit()
 
-        # Check if the domain was passed as a command-line argument
-        # or entered interactively
-        if not domain:
+        if args.file:
+            domains = read_data(args.file)
+        elif args.domain:
+            domains = [args.domain]
+        elif not sys.stdin.isatty():
+            domains = read_data(sys.stdin.readlines())
+        else:
             print(banner[2])
             print(banner[3], end="")
-            domain = str(input())
+            d = str(input())
+            domains = [d]
 
         # Get subdomains from the crtsh API
-        print(f"\nGetting info from '{Fore.GREEN}https://crt.sh{Style.RESET_ALL}'\n")
-        crtsh(domain)
+        if not args.plain:
+            print(f"\nGetting info from '{Fore.GREEN}https://crt.sh{Style.RESET_ALL}'\n")
+        crtsh(domains)
 
         if output:
             save(subdomains, output)
