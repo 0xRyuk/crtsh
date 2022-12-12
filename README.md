@@ -34,12 +34,12 @@ Run with
 
 or
 
->crtsh -t hackerone.com
+>crtsh -d hackerone.com
 
 # Usage
-To find subdomains of a domain, use the -t or --target option followed by the domain name:
+To find subdomains of a domain, use the -d or --domain option followed by the domain name:
 
->crtsh -t "hackerone.com"
+>crtsh -d "hackerone.com"
 
 The subdomains will be displayed in a formatted table.
 
@@ -48,17 +48,17 @@ The subdomains will be displayed in a formatted table.
 
 ```
 -h, --help          Show usage and help options
--t, --target        Search target
+-d, --domain        Search target domain
 -o, --out           Output file
 -p, --plain         Plain output, useful for piping result [Default: formatted]
 ```
 For example, to output the results to a file, use the `-o` or `--out ` option followed by the path to the file:
 
->crtsh -t "hackerone.com" -o "/path/to/file.txt"
+>crtsh -d "hackerone.com" -o "/path/to/file.txt"
 
 ### Pipe
 Stdout to use with other tools
->crtsh -t hackerone.com -p | httpx
+>crtsh -d hackerone.com -p | httpx
 
 use the `-p` or `--plain` option to display the results in a normal format.
 
